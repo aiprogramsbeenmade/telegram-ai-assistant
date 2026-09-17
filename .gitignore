@@ -23,3 +23,5 @@ models/
 
 # File di backup temporanei
 backup_main.py
+
+.gitignoregit

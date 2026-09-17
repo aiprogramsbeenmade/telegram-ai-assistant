@@ -1,2 +1,5 @@
 ddgs
 apscheduler
+llama-cpp-python
+huggingface-hub
+faster-whisper
