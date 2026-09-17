@@ -1,0 +1,25 @@
+# Virtual Environment
+bin/
+lib/
+pyvenv.cfg
+venv/
+.venv/
+
+# Credenziali e Variabili d'ambiente
+.env
+*.env
+
+# Cache di Python e IDE
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+
+# Database e Modelli LLM pesanti
+*.db
+*.sqlite
+*.sqlite3
+models/
+
+# File di backup temporanei
+backup_main.py
