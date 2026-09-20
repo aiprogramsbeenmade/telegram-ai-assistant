@@ -110,6 +110,7 @@ python3 main.py
 - `/addcontact` : Utile per memorizzare al volo un contatto mail. UTILIZZO: `/addcontact {nome} {email@example.com}`
 - `/web` : Ricerca web rapida con riassunto da parte dell'LLM;
 - `/memory` : Controlla cosa ha memorizzato l'IA nella memoria a breve e lungo termine.
+- `/vocal` : Rispondendo ad un messaggio verrà generata una traccia audio utilizzando `gTTS`.
 
 
 ## ⚖️ LICENZA

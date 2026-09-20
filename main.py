@@ -11,6 +11,7 @@ from handlers import chat, progress, reminders, emails, system, voice, weather, 
 from handlers.youtube import youtube_summary_handler
 from handlers.emails import handle_email_callback, handle
 from handlers.contacts import show_rubrica, add_contact, handle_contact_callback
+from core.voice import send_voice_message
 
 import os
 from functools import wraps
@@ -115,6 +116,41 @@ async def post_init(app):
     restore_pending_jobs(scheduler, app)
     print("Scheduler avviato con successo nell'event loop!")
 
+async def voice_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Legge il messaggio a cui l'utente sta rispondendo e lo converte in nota vocale.
+    """
+    message = update.message
+
+    # 1. Verifica se il comando è stato inviato in risposta a un altro messaggio
+    if not message.reply_to_message:
+        await message.reply_text(
+            "⚠️ Rispondi a un messaggio di testo con il comando /voice per farlo leggere a Jarvis!"
+        )
+        return
+
+    target_message = message.reply_to_message
+    text_to_speak = target_message.text or target_message.caption
+
+    # 2. Verifica che il messaggio contenga del testo
+    if not text_to_speak:
+        await message.reply_text("⚠️ Il messaggio selezionato non contiene testo da leggere.")
+        return
+
+    # Invia un feedback visivo immediato
+    processing_msg = await message.reply_text("🎙️ *Sto generando l'audio...*", parse_mode="Markdown")
+
+    # 3. Genera e invia il vocale
+    bot_token = context.bot.token
+    chat_id = update.effective_chat.id
+
+    try:
+        await send_voice_message(bot_token, chat_id, text_to_speak)
+        # Rimuove il messaggio di stato "Sto generando..." per tenere pulita la chat
+        await processing_msg.delete()
+    except Exception as e:
+        await processing_msg.edit_text(f"❌ Errore durante la generazione dell'audio: {e}")
+
 
 if __name__ == '__main__':
     db_manager.init_db()
@@ -133,6 +169,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("addcontact", add_contact))
     app.add_handler(CommandHandler("memory", system.show_memory))
     app.add_handler(CommandHandler("web", search.handle_web_search))
+    app.add_handler(CommandHandler("vocal", voice_reply_handler))
     app.add_handler(CallbackQueryHandler(system.handle_erase_callback, pattern="^(confirm_erase|cancel_erase)$"))
 
     youtube_filter = filters.TEXT & (filters.Regex(r'youtube\.com') | filters.Regex(r'youtu\.be'))
