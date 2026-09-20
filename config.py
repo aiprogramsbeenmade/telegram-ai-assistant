@@ -11,7 +11,7 @@ IMAP_SERVER = os.getenv("IMAP_SERVER", "imap.gmail.com")
 
 # Altre configurazioni di sistema
 MODEL_PATH = "./models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-N_CTX = 2048
+N_CTX = 4096
 N_THREADS = 4
 
 if not TELEGRAM_TOKEN:

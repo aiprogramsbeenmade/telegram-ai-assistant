@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 from core.llm import llm, extract_fact, check_web_intent
 from handlers.search import search_ddg
 from database import db_manager
+from handlers.pdf_handler import format_pdf_prompt
 
 BASE_SYSTEM_PROMPT = (
     "Sei Jarvis, un assistente virtuale sintetico, cordiale e preciso. Rispondi in italiano.\n"
@@ -20,7 +21,39 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: 
         return
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    status_msg = context.user_data.get("status_msg")
 
+    # -------------------------------------------------------------
+    # GESTIONE SESSIONE PDF (Se un documento è attivo nella sessione)
+    # -------------------------------------------------------------
+    active_pdf = context.user_data.get("active_pdf")
+    if active_pdf:
+        if status_msg:
+            await status_msg.edit_text("📄 *Consultazione del PDF in corso...*", parse_mode="Markdown")
+
+        pdf_prompt = format_pdf_prompt(active_pdf["data"], text)
+
+        # Invocazione LLM ottimizzata per evitare loop
+        output = await asyncio.to_thread(
+            llm,
+            pdf_prompt,
+            max_tokens=400,
+            temperature=0.2,  # Temperatura bassa per massima precisione
+            repeat_penalty=1.18,  # Impedisce il loop delle frasi
+            stop=["<|im_end|>", "Domanda Utente:", "TESTO DOCUMENTO:"]  # Chiusura forzata
+        )
+        risposta = output['choices'][0]['text'].strip()
+
+        status_msg = context.user_data.pop("status_msg", None)
+        if status_msg:
+            await status_msg.edit_text(risposta)
+        else:
+            await update.message.reply_text(risposta)
+        return
+
+    # -------------------------------------------------------------
+    # CHAT STANDARD / RICERCA WEB
+    # -------------------------------------------------------------
     # 1. Estrazione eventuale fatto a lungo termine
     new_fact = extract_fact(text)
     if new_fact:
@@ -30,8 +63,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: 
     web_query = check_web_intent(text)
     web_context = ""
     if web_query:
-        # Recupera il messaggio "Sto pensando..." creato dal main e aggiornalo
-        status_msg = context.user_data.get("status_msg")
         if status_msg:
             await status_msg.edit_text(f"🌐 *Ricerca sul web per:* `{web_query}`...", parse_mode="Markdown")
 

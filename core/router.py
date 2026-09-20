@@ -9,7 +9,8 @@ Categorie di azioni disponibili:
 3. "weather": Informazioni sul meteo o previsioni atmosferiche. (es. "che meteo fa domani?")
 4. "maps": Percorsi, distanze, calcolo tempi o indicazioni stradali. (es. "quanto ci metto per andare ad Anagni?")
 5. "progress": Registrazione di attività fisiche, studio o abitudini. (es. "oggi ho studiato 2 ore")
-6. "chat": Conversazione generale, saluti, spiegazioni, domande che non richiedono un modulo esterno.
+6. "pdf_qa": Domande, riassunti o spiegazioni relative ad un documento PDF caricato o attualmente attivo. (es. "cosa dice a pagina 3?", "riassumi il file", "chiarisci il capitolo 2")
+7. "chat": Conversazione generale, saluti, spiegazioni o domande generiche che non riguardano un modulo specifico o il PDF attivo.
 
 Formato di output richiesto (SOLO un array JSON di oggetti):
 [
@@ -23,6 +24,13 @@ Output:
   {"intent": "reminder", "query": "ricordami tra 5 minuti di prendere l'integratore"},
   {"intent": "email", "query": "manda una mail a Matteo"},
   {"intent": "weather", "query": "dimmi il meteo di domani"}
+]
+
+Input: "Riassumi quello che c'è scritto nel PDF a pagina 5 e poi dimmi il meteo"
+Output:
+[
+  {"intent": "pdf_qa", "query": "Riassumi quello che c'è scritto nel PDF a pagina 5"},
+  {"intent": "weather", "query": "dimmi il meteo"}
 ]
 
 Input: "Spiegami come funziona l'algoritmo di Dijkstra"

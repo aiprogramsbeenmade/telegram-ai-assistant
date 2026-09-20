@@ -6,22 +6,77 @@ from telegram.ext import ContextTypes, ApplicationBuilder, CommandHandler, Messa
 
 import config
 from database import db_manager
-from core.router import parse_intents  # <--- Import aggiornato
+from core.router import parse_intents
 from handlers import chat, progress, reminders, emails, system, voice, weather, maps, search
 from handlers.youtube import youtube_summary_handler
 from handlers.emails import handle_email_callback, handle
 from handlers.contacts import show_rubrica, add_contact, handle_contact_callback
 from core.voice import send_voice_message
+from core.system_status import get_system_status
+from handlers.pdf_handler import extract_text_from_pdf
 
 import os
 from functools import wraps
 from dotenv import load_dotenv
+import asyncio
 
 logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
 ALLOWED_USER_ID = int(os.getenv("ALLOWED_TELEGRAM_USER_ID", "0"))
+
+DOWNLOAD_DIR = "downloads"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+
+async def pdf_document_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Intercetta i file PDF inviati dall'utente, estrae il testo e lo salva nel contesto sessione.
+    """
+    document = update.message.document
+
+    if not document.file_name.lower().endswith('.pdf'):
+        return
+
+    await update.message.reply_text("📄 *Ricevuto file PDF. Analisi ed estrazione del testo in corso...*",
+                                    parse_mode="Markdown")
+
+    # 1. Scarica il file dal server Telegram
+    file = await context.bot.get_file(document.file_id)
+    file_path = os.path.join(DOWNLOAD_DIR, document.file_name)
+    await file.download_to_drive(file_path)
+
+    try:
+        # 2. Estrae il testo tramite pypdf
+        pdf_data = extract_text_from_pdf(file_path)
+
+        if "error" in pdf_data:
+            await update.message.reply_text(f"❌ Errore: {pdf_data['error']}")
+            return
+
+        # 3. Salva i dati del PDF nella memoria di sessione dell'utente (user_data)
+        context.user_data["active_pdf"] = {
+            "filename": document.file_name,
+            "data": pdf_data
+        }
+
+        pages_read = pdf_data["pages_read"]
+        total_pages = pdf_data["total_pages"]
+
+        caption = (
+            f"✅ *PDF caricato con successo!*\n\n"
+            f"📌 *Nome:* `{document.file_name}`\n"
+            f"📖 *Pagine analizzate:* `{pages_read}/{total_pages}`\n\n"
+            f"Ora puoi farmi qualsiasi domanda sul contenuto di questo documento!\n"
+            f"_(Usa /closepdf per chiudere la sessione sul PDF)_"
+        )
+        await update.message.reply_text(caption, parse_mode="Markdown")
+
+    finally:
+        # Pulizia del file locale scaricato per mantenere pulito il server
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 
 def restricted(func):
@@ -88,7 +143,7 @@ async def route_message(update: Update, context: ContextTypes.DEFAULT_TYPE, user
             await reminders.handle(update, context, user_text=sub_query)
         elif intent == "progress":
             await progress.handle(update, context, user_text=sub_query)
-        elif intent == "chat":
+        elif intent in ["chat", "pdf_qa"]:
             await chat.handle(update, context, user_text=sub_query)
 
 
@@ -116,40 +171,56 @@ async def post_init(app):
     restore_pending_jobs(scheduler, app)
     print("Scheduler avviato con successo nell'event loop!")
 
+
 async def voice_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Legge il messaggio a cui l'utente sta rispondendo e lo converte in nota vocale.
     """
     message = update.message
 
-    # 1. Verifica se il comando è stato inviato in risposta a un altro messaggio
     if not message.reply_to_message:
         await message.reply_text(
-            "⚠️ Rispondi a un messaggio di testo con il comando /voice per farlo leggere a Jarvis!"
+            "⚠️ Rispondi a un messaggio di testo con il comando /vocal o /voice per farlo leggere a Jarvis!"
         )
         return
 
     target_message = message.reply_to_message
     text_to_speak = target_message.text or target_message.caption
 
-    # 2. Verifica che il messaggio contenga del testo
     if not text_to_speak:
         await message.reply_text("⚠️ Il messaggio selezionato non contiene testo da leggere.")
         return
 
-    # Invia un feedback visivo immediato
     processing_msg = await message.reply_text("🎙️ *Sto generando l'audio...*", parse_mode="Markdown")
 
-    # 3. Genera e invia il vocale
     bot_token = context.bot.token
     chat_id = update.effective_chat.id
 
     try:
         await send_voice_message(bot_token, chat_id, text_to_speak)
-        # Rimuove il messaggio di stato "Sto generando..." per tenere pulita la chat
         await processing_msg.delete()
     except Exception as e:
         await processing_msg.edit_text(f"❌ Errore durante la generazione dell'audio: {e}")
+
+
+async def status_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gestore del comando /status"""
+    status_text = get_system_status()
+    await update.message.reply_text(status_text, parse_mode="Markdown")
+
+async def route_message_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Wrapper per tracciare il Task asincrono e permetterne la cancellazione tramite /stop."""
+    # Salva il task corrente per poterlo cancellare
+    task = asyncio.current_task()
+    context.user_data["current_task"] = task
+
+    try:
+        await route_message(update, context)
+    except asyncio.CancelledError:
+        print("⚠️ Operazione annullata dall'utente tramite /stop.")
+    finally:
+        # Pulisce il riferimento al task al termine
+        context.user_data.pop("current_task", None)
 
 
 if __name__ == '__main__':
@@ -162,7 +233,7 @@ if __name__ == '__main__':
         .build()
     )
 
-    # Handlers
+    # Handlers Comandi
     app.add_handler(CommandHandler("report", progress.show_report))
     app.add_handler(CommandHandler("erase", system.erase_command))
     app.add_handler(CommandHandler("rubrica", show_rubrica))
@@ -170,13 +241,22 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("memory", system.show_memory))
     app.add_handler(CommandHandler("web", search.handle_web_search))
     app.add_handler(CommandHandler("vocal", voice_reply_handler))
+    app.add_handler(CommandHandler("voice", voice_reply_handler))
+    app.add_handler(CommandHandler("status", status_command_handler))
+    app.add_handler(CommandHandler("closepdf", system.close_pdf_command))
+    app.add_handler(CommandHandler("stop", system.stop_command))
+    app.add_handler(CommandHandler("cancel", system.stop_command))
     app.add_handler(CallbackQueryHandler(system.handle_erase_callback, pattern="^(confirm_erase|cancel_erase)$"))
 
+    # Handler YouTube
     youtube_filter = filters.TEXT & (filters.Regex(r'youtube\.com') | filters.Regex(r'youtu\.be'))
     app.add_handler(MessageHandler(youtube_filter, youtube_summary_handler))
 
-    # Message e Callback handlers (rimossa la duplicazione di MessageHandler)
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), route_message))
+    # Handler Documenti (PDF)
+    app.add_handler(MessageHandler(filters.Document.MimeType("application/pdf"), pdf_document_handler))
+
+    # Message e Callback handlers
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), route_message_wrapper))
     app.add_handler(MessageHandler(filters.VOICE, voice.handle_voice))
     app.add_handler(CallbackQueryHandler(handle_email_callback, pattern="^email_"))
     app.add_handler(CallbackQueryHandler(handle_contact_callback, pattern="^del_contact_"))

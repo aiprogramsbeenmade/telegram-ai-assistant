@@ -63,3 +63,38 @@ async def show_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(msg, parse_mode="Markdown")
+
+@restricted
+async def close_pdf_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Chiude la sessione di lettura PDF attiva."""
+    if "active_pdf" in context.user_data:
+        filename = context.user_data["active_pdf"]["filename"]
+        del context.user_data["active_pdf"]
+        await update.message.reply_text(
+            f"🚫 Sessione sul documento `{filename}` chiusa.\n"
+            f"Jarvis è tornato alla modalità di conversazione standard.",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text("ℹ️ Nessun documento PDF attualmente attivo.")
+
+
+@restricted
+async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Interrompe le operazioni in corso e resetta lo stato della sessione utente."""
+
+    # 1. Annulla eventuali task asincroni salvati nel contesto
+    current_task = context.user_data.get("current_task")
+    if current_task and not current_task.done():
+        current_task.cancel()
+        context.user_data.pop("current_task", None)
+
+    # 2. Pulisce gli stati temporanei (es. PDF attivo, attesa nome contatto, messaggi di stato)
+    was_pdf_active = "active_pdf" in context.user_data
+    context.user_data.clear()
+
+    msg = "🛑 *Operazione interrotta e stato resettato.*"
+    if was_pdf_active:
+        msg += "\n📄 _La sessione PDF è stata chiusa._"
+
+    await update.message.reply_text(msg, parse_mode="Markdown")

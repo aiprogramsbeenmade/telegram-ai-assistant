@@ -5,3 +5,5 @@ huggingface-hub
 faster-whisper
 youtube-transcript-api
 gTTS
+psutil
+pypdf

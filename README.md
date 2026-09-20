@@ -11,10 +11,12 @@ Un assistente virtuale privato, modulare e autonomo eseguito completamente in lo
 * **🔀 Orchestratore Multi-Intent**: Routing dinamico dei comandi verso moduli dedicati (Meteo, Mappe, Promemoria, Email, Contatti, Progressi).
 * **📧 Gestione Email & Notifiche**: Integrazione IMAP/SMTP per la lettura e l'invio rapido di e-mail.
 * **🔒 Privacy & Architettura Locale**: Nessuna dipendenza da API esterne a pagamento; il modello di linguaggio gira interamente sul server locale.
+* **🗣️ Trascrizione di vocali** : Manda un messaggio vocale, verrà trascritto e risponderà alla tua richiesta! 
 * **📍 Salvataggio automatico di progressi**: Racconta le cose al tuo assistente e ricorderà per te tutti i tuoi progressi tenendone traccia.
 * **🗺️ Integrazione con OpenStreetMap**: Per informazioni geografiche più precise.
 * **👤 Personale**: Grazie al `user_id` il bot risponderà solamente a TE.
 * **📹 Integrazione modulo Youtube**: Basta inviare un link di un video youtube e riceverete un riassunto strutturato sull'argomento proposto nel video.
+* **📄 Comprensione PDF**: Manda un PDF e sarai in grado di fare domande e ricevere risposte sull'argomento.
 
 ## 🛠️ Architettura del Progetto
 
@@ -104,6 +106,7 @@ python3 main.py
 ```
 
 ## 👾 Comandi integrati nel Bot
+- `/stop` : Comando per fermare qualsiasi attività del BOT.
 - `/report` : Crea un report dei tuoi progressi memorizzati;
 - `/erase` : Elimina il contenuto di TUTTI i database;
 - `/rubrica` : Stampa a schermo la rubrica delle Mail;
@@ -111,6 +114,8 @@ python3 main.py
 - `/web` : Ricerca web rapida con riassunto da parte dell'LLM;
 - `/memory` : Controlla cosa ha memorizzato l'IA nella memoria a breve e lungo termine.
 - `/vocal` : Rispondendo ad un messaggio verrà generata una traccia audio utilizzando `gTTS`.
+- `/status` : Per avere un recap completo dello stato della macchina.
+
 
 
 ## ⚖️ LICENZA
