@@ -14,7 +14,7 @@ Un assistente virtuale privato, modulare e autonomo eseguito completamente in lo
 * **📍 Salvataggio automatico di progressi**: Racconta le cose al tuo assistente e ricorderà per te tutti i tuoi progressi tenendone traccia.
 * **🗺️ Integrazione con OpenStreetMap**: Per informazioni geografiche più precise.
 * **👤 Personale**: Grazie al `user_id` il bot risponderà solamente a TE.
-
+* **📹 Integrazione modulo Youtube**: Basta inviare un link di un video youtube e riceverete un riassunto strutturato sull'argomento proposto nel video.
 
 ## 🛠️ Architettura del Progetto
 

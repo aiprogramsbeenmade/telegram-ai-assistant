@@ -8,6 +8,7 @@ import config
 from database import db_manager
 from core.router import parse_intents  # <--- Import aggiornato
 from handlers import chat, progress, reminders, emails, system, voice, weather, maps, search
+from handlers.youtube import youtube_summary_handler
 from handlers.emails import handle_email_callback, handle
 from handlers.contacts import show_rubrica, add_contact, handle_contact_callback
 
@@ -133,6 +134,9 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("memory", system.show_memory))
     app.add_handler(CommandHandler("web", search.handle_web_search))
     app.add_handler(CallbackQueryHandler(system.handle_erase_callback, pattern="^(confirm_erase|cancel_erase)$"))
+
+    youtube_filter = filters.TEXT & (filters.Regex(r'youtube\.com') | filters.Regex(r'youtu\.be'))
+    app.add_handler(MessageHandler(youtube_filter, youtube_summary_handler))
 
     # Message e Callback handlers (rimossa la duplicazione di MessageHandler)
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), route_message))

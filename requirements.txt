@@ -3,3 +3,4 @@ apscheduler
 llama-cpp-python
 huggingface-hub
 faster-whisper
+youtube-transcript-api
