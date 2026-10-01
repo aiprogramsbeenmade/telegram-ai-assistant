@@ -7,3 +7,6 @@ youtube-transcript-api
 gTTS
 psutil
 pypdf
+python-dotenv
+python-telegram-bot
+paho-mqtt
